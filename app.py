@@ -154,7 +154,7 @@ def home():
                 
                 {'' if is_main_menu else '''
                 <button class="back-btn" onclick="sendCategory(\'main_menu\')">
-                    <i class="fas fa-arrow-left"></i> Back to Main Categories
+                    Back to Main Categories
                 </button>
                 '''}
             </div>
@@ -163,13 +163,12 @@ def home():
             response = f"""
             <div class="confirmation-container">
                 <div class="confirmation-header">
-                    <i class="fas fa-check-circle"></i>
                     <span>Service selected:</span>
                 </div>
                 <p class="selected-service">{message}</p>
                 <p class="followup-prompt">How can we help further?</p>
                 <button class="back-btn" onclick="sendCategory(\'main_menu\')">
-                    <i class="fas fa-arrow-left"></i> Back to Main Categories
+                    Back to Main Categories
                 </button>
             </div>
             """
