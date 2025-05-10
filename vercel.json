@@ -6,7 +6,8 @@
       "use": "@vercel/python",
       "config": {
         "runtime": "python3.12",
-        "maxLambdaSize": "15mb"  
+        "pythonVersion": "3.12",
+        "suppressProxy": true
       }
     }
   ],
@@ -14,6 +15,9 @@
     {
       "src": "/(.*)",
       "dest": "app.py",
-      "methods": ["GET", "POST", "OPTIONS"] 
+      "headers": {
+        "X-No-Proxies": "true" 
+      }
+    }
   ]
 }
