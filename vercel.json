@@ -6,6 +6,7 @@
       "use": "@vercel/python",
       "config": { 
         "runtime": "python3.12"
+        "includeFiles": "templates/*"
       }
     }
   ],
