@@ -1,14 +1,19 @@
 {
-    "version" : 2,
-    "builds" : [
-        {"src": "app.py" , "use" : "@vercel/python"}
-    ],
-    "routes": [
-        {"src": "/(.*)" , "dest" : "app.py"}
-    ]
-
-
-
-
-
+  "version": 2,
+  "builds": [
+    {
+      "src": "app.py",
+      "use": "@vercel/python",
+      "config": { 
+        "runtime": "python3.12"  # Explicitly set Python version
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "app.py",
+      "methods": ["GET", "POST"]  # Ensure all methods are allowed
+    }
+  ]
 }
