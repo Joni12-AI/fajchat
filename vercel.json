@@ -4,9 +4,9 @@
     {
       "src": "app.py",
       "use": "@vercel/python",
-      "config": { 
-        "runtime": "python3.12"
-        "includeFiles": "templates/*"
+      "config": {
+        "runtime": "python3.12",
+        "maxLambdaSize": "15mb"  
       }
     }
   ],
@@ -14,7 +14,6 @@
     {
       "src": "/(.*)",
       "dest": "app.py",
-      "methods": ["GET", "POST"] 
-    }
+      "methods": ["GET", "POST", "OPTIONS"] 
   ]
 }
