@@ -1,24 +1,65 @@
-from flask import Flask, render_template, request, session, jsonify, redirect, url_for
+from flask import Flask, render_template, request, session, jsonify, redirect, url_for, send_file
 from flask_session import Session
-import csv
-import os
-from openai import OpenAI
 from datetime import datetime
-from flask import send_file
 from io import BytesIO
 from fpdf import FPDF
 from dotenv import load_dotenv
+import psycopg2
+import os
+from bs4 import BeautifulSoup
 
 load_dotenv()
+def get_db():
+    conn = psycopg2.connect(os.getenv("POSTGRES_URL"))
+    return conn
 
-class CustomOpenAIClient(OpenAI):
-    def __init__(self, *args, **kwargs):
-        kwargs.pop('proxies', None)  
-        super().__init__(*args, **kwargs)
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    http_client=None,          
-)
+# Initialize database tables
+def init_db():
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS registrations (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            phone VARCHAR(20) NOT NULL,
+            email VARCHAR(100) NOT NULL,
+            timestamp TIMESTAMP DEFAULT NOW()
+        )
+        """)
+        
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            phone VARCHAR(20) NOT NULL,
+            email VARCHAR(100) NOT NULL,
+            sender VARCHAR(20) NOT NULL,
+            message TEXT NOT NULL,
+            timestamp TIMESTAMP DEFAULT NOW()
+        )
+        """)
+        
+        conn.commit()
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
+# Initialize database
+init_db()
+
+class CustomOpenAIClient:
+    def __init__(self, api_key):
+        self.api_key = api_key
+
+    def chat_completions_create(self, *args, **kwargs):
+        from openai import OpenAI
+        client = OpenAI(api_key=self.api_key, http_client=None)
+        return client.chat.completions.create(*args, **kwargs)
+
 
 # Flask setup
 app = Flask(__name__)
@@ -49,69 +90,57 @@ CATEGORIES = {
     "Other": ["General Information"]
 }
 
-# Save chat to CSV (Updated to include email)
-# File paths
-REGISTRATIONS_FILE = "registrations.csv"
-CHAT_HISTORY_FILE = "chat_history.csv"
+
 
 def save_registration(name, phone, email):
-    """Save registration data to separate file"""
-    fieldnames = ["Name", "Phone", "Email", "Timestamp"]
-    row = {
-        "Name": name,
-        "Phone": phone,
-        "Email": email,
-        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-    
-    # Check if file exists to determine if header is needed
-    file_exists = os.path.exists(REGISTRATIONS_FILE)
-    
-    with open(REGISTRATIONS_FILE, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow(row)
-# savings chats in csv file
-def save_chat_to_csv(name, phone, email, chat_history):
-    """Save chat history with duplicate prevention (modified from your original)"""
-    existing_entries = set()
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO registrations (name, phone, email) VALUES (%s, %s, %s)",
+            (name, phone, email)
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Error saving registration: {e}")
+    finally:
+        cur.close()
+        conn.close()
 
-    # Load existing entries if file exists
-    if os.path.exists(CHAT_HISTORY_FILE):
-        with open(CHAT_HISTORY_FILE, mode='r', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            next(reader, None)  # Skip header
-            for row in reader:
-                if len(row) >= 6:  # Check for all columns
-                    entry = (row[0], row[1], row[2], row[3], row[4], row[5])
-                    existing_entries.add(entry)
-
-    # Write to chat history file
-    with open(CHAT_HISTORY_FILE, mode='a', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        if os.path.getsize(CHAT_HISTORY_FILE) == 0:
-            writer.writerow(["Name", "Phone", "Email", "Sender", "Message", "Timestamp"])
-
+def save_chat_history(name, phone, email, chat_history):
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
         for item in chat_history:
             if len(item) == 3:
                 sender, message, timestamp = item
             elif len(item) == 2:
                 sender, message = item
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                timestamp = datetime.now()
             else:
                 continue
             
             # Clean HTML from messages
-            clean_msg = ' '.join(str(message).split())  # Basic cleaning
+            clean_msg = ' '.join(str(message).split())
             if '<' in clean_msg and '>' in clean_msg:
-                from bs4 import BeautifulSoup
                 soup = BeautifulSoup(clean_msg, 'html.parser')
                 clean_msg = soup.get_text(separator=' ', strip=True)
             
-            row = (name, phone, email, sender, clean_msg, timestamp)
-            if row not in existing_entries:
-                writer.writerow(row)
+            cur.execute(
+                """INSERT INTO chat_history 
+                (name, phone, email, sender, message, timestamp)
+                VALUES (%s, %s, %s, %s, %s, %s)""",
+                (name, phone, email, sender, clean_msg, timestamp)
+            )
+        
+        conn.commit()
+    except Exception as e:
+        print(f"Error saving chat history: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -308,15 +337,24 @@ def download_chat():
     user = session['user_details']
     name = f"{user['first_name']} {user['last_name']}"
     
-    # Get chat history from CSV
+    # Get chat history from database
     chat_history = []
-    if os.path.exists(CHAT_HISTORY_FILE):
-        with open(CHAT_HISTORY_FILE, 'r') as f:
-            reader = csv.reader(f)
-            next(reader)  # Skip header
-            for row in reader:
-                if row[0] == name and row[1] == user['phone']:
-                    chat_history.append((row[3], row[4], row[5]))  # (sender, message, timestamp)
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT sender, message, timestamp 
+            FROM chat_history 
+            WHERE name = %s AND phone = %s 
+            ORDER BY timestamp""",
+            (name, user['phone'])
+        )
+        chat_history = cur.fetchall()
+    except Exception as e:
+        print(f"Error fetching chat history: {e}")
+    finally:
+        cur.close()
+        conn.close()
     
     # Generate PDF
     user_info = {
@@ -324,7 +362,10 @@ def download_chat():
         'phone': user['phone'],
         'email': user.get('email', '')
     }
-    pdf_buffer = generate_chat_pdf(chat_history, user_info)
+    pdf_buffer = generate_chat_pdf(
+        [(item[0], item[1], item[2].strftime("%Y-%m-%d %H:%M:%S")) for item in chat_history],
+        user_info
+    )
     
     return send_file(
         pdf_buffer,
@@ -332,6 +373,8 @@ def download_chat():
         download_name=f"FAJ_Chat_{name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
         mimetype='application/pdf'
     )
+
+# Keep all your other routes exactly the same (home, user_form, reset, etc.)
 
 if __name__ == "__main__":
     app.run(debug=True)
