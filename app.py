@@ -11,6 +11,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+class CustomOpenAIClient(OpenAI):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('proxies', None)  
+        super().__init__(*args, **kwargs)
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
     http_client=None,          
