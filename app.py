@@ -10,6 +10,51 @@ from fpdf import FPDF
 from dotenv import load_dotenv
 import requests 
 import json
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
+from google.oauth2 import id_token
+from google_auth_oauthlib.flow import Flow
+from google.auth.transport import requests as google_requests
+
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    import os
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    access_token_params=None,
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    authorize_params={
+        'access_type': 'offline',
+        'prompt': 'consent'
+    },
+    api_base_url='https://www.googleapis.com/oauth2/v1/',
+    userinfo_endpoint='https://www.googleapis.com/oauth2/v1/userinfo',
+    client_kwargs={'scope': 'openid email profile'}
+)
+
+@app.route('/')
+def index():
+    email = dict(session).get('email', None)
+    return f'Logged in as {email}' if email else '<a href="/login">Login with Gmail</a>'
+
+@app.route('/login')
+def login():
+    redirect_uri = url_for('callback', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/login/callback')
+def callback():
+    token = google.authorize_access_token()
+    resp = google.get('userinfo')
+    user_info = resp.json()
+    session['email'] = user_info['email']
+    return redirect('/')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/')
 load_dotenv()
 
 class CustomOpenAIClient(OpenAI):
