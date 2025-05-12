@@ -21,7 +21,6 @@ client = CustomOpenAIClient(
     api_key=os.getenv("OPENAI_API_KEY")
 )
 
-
 # Flask setup
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
