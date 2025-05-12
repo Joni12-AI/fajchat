@@ -74,7 +74,7 @@ def save_registration(name, phone, email):
                 "Content-Type": "application/json"
             },
             data=json.dumps(user_data)
-        
+        )
         response.raise_for_status()
         return True
     except Exception as e:
