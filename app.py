@@ -25,6 +25,8 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 #app.config['SESSION_TYPE'] = 'filesystem'
 #Session(app)
+UPSTASH_REDIS_URL = os.getenv("https://square-bobcat-19563.upstash.io") 
+UPSTASH_TOKEN = os.getenv("AUxrAAIjcDEyNGUwMzU5NzhmY2M0MDQyYTA2ZTljOGZlZTM1YTQwY3AxMA")
 
 # Function to get chatbot response from OpenAI
 def get_response(user_input):
@@ -51,67 +53,64 @@ CATEGORIES = {
 
 # Save chat to CSV (Updated to include email)
 # File paths
-REGISTRATIONS_FILE = "registrations.csv"
-CHAT_HISTORY_FILE = "chat_history.csv"
+#REGISTRATIONS_FILE = "registrations.csv"
+#CHAT_HISTORY_FILE = "chat_history.csv"
 
 def save_registration(name, phone, email):
-    """Save registration data to separate file"""
-    fieldnames = ["Name", "Phone", "Email", "Timestamp"]
-    row = {
-        "Name": name,
-        "Phone": phone,
-        "Email": email,
-        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-    
-    # Check if file exists to determine if header is needed
-    file_exists = os.path.exists(REGISTRATIONS_FILE)
-    
-    with open(REGISTRATIONS_FILE, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow(row)
+    """Save registration data to Redis"""
+    try:
+        redis_key = f"user:{phone}:info"
+        user_data = {
+            "name": name,
+            "phone": phone,
+            "email": email,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        response = requests.post(
+            f"{UPSTASH_REDIS_URL}/set/{redis_key}",
+            headers={
+                "Authorization": f"Bearer {UPSTASH_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            data=json.dumps(user_data)
+        
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        print(f"Redis registration error: {e}")
+        return False
 # savings chats in csv file
-def save_chat_to_csv(name, phone, email, chat_history):
-    """Save chat history with duplicate prevention (modified from your original)"""
-    existing_entries = set()
-
-    # Load existing entries if file exists
-    if os.path.exists(CHAT_HISTORY_FILE):
-        with open(CHAT_HISTORY_FILE, mode='r', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            next(reader, None)  # Skip header
-            for row in reader:
-                if len(row) >= 6:  # Check for all columns
-                    entry = (row[0], row[1], row[2], row[3], row[4], row[5])
-                    existing_entries.add(entry)
-
-    # Write to chat history file
-    with open(CHAT_HISTORY_FILE, mode='a', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        if os.path.getsize(CHAT_HISTORY_FILE) == 0:
-            writer.writerow(["Name", "Phone", "Email", "Sender", "Message", "Timestamp"])
-
-        for item in chat_history:
-            if len(item) == 3:
-                sender, message, timestamp = item
-            elif len(item) == 2:
-                sender, message = item
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                continue
-            
-            # Clean HTML from messages
-            clean_msg = ' '.join(str(message).split())  # Basic cleaning
-            if '<' in clean_msg and '>' in clean_msg:
-                from bs4 import BeautifulSoup
-                soup = BeautifulSoup(clean_msg, 'html.parser')
-                clean_msg = soup.get_text(separator=' ', strip=True)
-            
-            row = (name, phone, email, sender, clean_msg, timestamp)
-            if row not in existing_entries:
-                writer.writerow(row)
+def save_chat_to_redis(name, phone, email, chat_history):
+    """Save chat history to Upstash Redis using REST API"""
+    try:
+        # Generate a unique key for this user's chat (e.g., "chat:{phone}:history")
+        redis_key = f"chat:{phone}:history"
+        
+        # Convert chat history to JSON
+        chat_data = {
+            "name": name,
+            "phone": phone,
+            "email": email,
+            "history": chat_history,
+            "last_updated": datetime.now().isoformat()
+        }
+        
+        # Send data to Upstash Redis (SET command via REST)
+        response = requests.post(
+            f"{UPSTASH_REDIS_URL}/set/{redis_key}",
+            headers={
+                "Authorization": f"Bearer {UPSTASH_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            data=json.dumps(chat_data)
+        )
+        
+        response.raise_for_status()  # Raise error if request fails
+        return True
+    except Exception as e:
+        print(f"Redis save error: {e}")
+        return False
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -306,32 +305,39 @@ def download_chat():
         return redirect(url_for('user_form'))
     
     user = session['user_details']
-    name = f"{user['first_name']} {user['last_name']}"
+    phone = user['phone']
     
-    # Get chat history from CSV
-    chat_history = []
-    if os.path.exists(CHAT_HISTORY_FILE):
-        with open(CHAT_HISTORY_FILE, 'r') as f:
-            reader = csv.reader(f)
-            next(reader)  # Skip header
-            for row in reader:
-                if row[0] == name and row[1] == user['phone']:
-                    chat_history.append((row[3], row[4], row[5]))  # (sender, message, timestamp)
-    
-    # Generate PDF
-    user_info = {
-        'name': name,
-        'phone': user['phone'],
-        'email': user.get('email', '')
-    }
-    pdf_buffer = generate_chat_pdf(chat_history, user_info)
-    
-    return send_file(
-        pdf_buffer,
-        as_attachment=True,
-        download_name=f"FAJ_Chat_{name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
-        mimetype='application/pdf'
-    )
+    try:
+        # Fetch chat history from Redis
+        response = requests.get(
+            f"{UPSTASH_REDIS_URL}/get/chat:{phone}:history",
+            headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"}
+        )
+        response.raise_for_status()
+        
+        chat_data = response.json().get("result")
+        if not chat_data:
+            return "No chat history found", 404
+            
+        chat_history = json.loads(chat_data)["history"]
+        
+        # Generate PDF
+        user_info = {
+            "name": f"{user['first_name']} {user['last_name']}",
+            "phone": phone,
+            "email": user.get('email', '')
+        }
+        pdf_buffer = generate_chat_pdf(chat_history, user_info)
+        
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=f"FAJ_Chat_{user_info['name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        print(f"Redis fetch error: {e}")
+        return "Failed to generate chat history", 500
 
 if __name__ == "__main__":
     app.run(debug=True)   
