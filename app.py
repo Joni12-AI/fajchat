@@ -296,7 +296,7 @@ def generate_chat_pdf(chat_history, user_info):
     
     # Save to memory buffer
     pdf_buffer = BytesIO()
-    pdf.output(pdf_buffer)
+    pdf.output(pdf_buffer,  dest='F')
     pdf_buffer.seek(0)
     return pdf_buffer
 @app.route('/download_chat')
@@ -336,6 +336,8 @@ def download_chat():
             mimetype='application/pdf'
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Redis fetch error: {e}")
         return "Failed to generate chat history", 500
 
