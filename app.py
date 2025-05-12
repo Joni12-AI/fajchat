@@ -186,7 +186,7 @@ def home():
         session["chat_history"] = chat_history
 
         # Save with email (FIXED)
-        save_chat_to_csv(
+        save_chat_to_redis(
             f"{user['first_name']} {user['last_name']}",
             user["phone"],
             user["email"],
