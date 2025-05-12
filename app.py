@@ -15,10 +15,10 @@ class CustomOpenAIClient(OpenAI):
     def __init__(self, *args, **kwargs):
         kwargs.pop('proxies', None)  
         super().__init__(*args, **kwargs)
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    http_client=None,          
+client = CustomOpenAIClient(
+    api_key=os.getenv("OPENAI_API_KEY")
 )
+
 
 # Flask setup
 app = Flask(__name__)
