@@ -23,8 +23,8 @@ client = OpenAI(
 # Flask setup
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
-app.config['SESSION_TYPE'] = 'filesystem'
-Session(app)
+#app.config['SESSION_TYPE'] = 'filesystem'
+#Session(app)
 
 # Function to get chatbot response from OpenAI
 def get_response(user_input):
