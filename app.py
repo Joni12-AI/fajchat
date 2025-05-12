@@ -8,7 +8,7 @@ from flask import send_file
 from io import BytesIO
 from fpdf import FPDF
 from dotenv import load_dotenv
-
+import requests 
 load_dotenv()
 
 class CustomOpenAIClient(OpenAI):
