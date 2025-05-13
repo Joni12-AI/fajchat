@@ -106,6 +106,13 @@
             <button type="submit">Submit</button>
         </form>
     </div>
+    <!-- Google Sign-In Button -->
+    <div class="auth-section">
+      <a href="{{ url_for('login') }}" class="google-login-btn">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google">
+        Sign in with Google
+      </a>
+    </div>
 
     <script>
         document.getElementById('registrationForm').addEventListener('submit', function(e) {
