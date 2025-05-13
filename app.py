@@ -28,13 +28,14 @@ client = CustomOpenAIClient(
 # Flask setup
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 #app.config['SESSION_TYPE'] = 'filesystem'
 #Session(app)
 UPSTASH_REDIS_URL = os.getenv("https://square-bobcat-19563.upstash.io") 
 UPSTASH_TOKEN = os.getenv("AUxrAAIjcDEyNGUwMzU5NzhmY2M0MDQyYTA2ZTljOGZlZTM1YTQwY3AxMA")
 
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+
 
 class User(UserMixin):
     def __init__(self, id_, email):
