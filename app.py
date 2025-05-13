@@ -15,9 +15,6 @@ from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport import requests as google_requests
 
-
-
-
 load_dotenv()
 
 class CustomOpenAIClient(OpenAI):
