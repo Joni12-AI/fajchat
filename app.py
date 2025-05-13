@@ -348,3 +348,4 @@ def download_chat():
 
 if __name__ == "__main__":
     app.run(debug=True)   
+session.clear()  # Clear all session data
