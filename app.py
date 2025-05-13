@@ -10,10 +10,6 @@ from fpdf import FPDF
 from dotenv import load_dotenv
 import requests 
 import json
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
-from google.oauth2 import id_token
-from google_auth_oauthlib.flow import Flow
-from google.auth.transport import requests as google_requests
 
 load_dotenv()
 
@@ -27,8 +23,6 @@ client = CustomOpenAIClient(
 
 # Flask setup
 app = Flask(__name__)
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 #app.config['SESSION_TYPE'] = 'filesystem'
 #Session(app)
@@ -37,61 +31,7 @@ UPSTASH_TOKEN = os.getenv("AUxrAAIjcDEyNGUwMzU5NzhmY2M0MDQyYTA2ZTljOGZlZTM1YTQwY
 
 
 
-class User(UserMixin):
-    def __init__(self, id_, email):
-        self.id = id_
-        self.email = email
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User(user_id, session.get("email"))
-
-# Google OAuth config
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-flow = Flow.from_client_config(
-    client_config={
-        "web": {
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://accounts.google.com/o/oauth2/token",
-            "redirect_uris": [
-                "http://localhost:5000/login/callback",  # Local
-                "http://fajchat.vercel.app/auth/callback"  # Production
-            ]
-        }
-    },
-    scopes=["openid", "https://www.googleapis.com/auth/userinfo.email"]
-)
-
-@app.route("/login")
-def login():
-    authorization_url, state = flow.authorization_url()
-    session["state"] = state
-    return redirect(authorization_url)
-
-@app.route("/login/callback")
-def callback():
-    flow.fetch_token(authorization_response=request.url)
-    credentials = flow.credentials
-    id_info = id_token.verify_oauth2_token(
-        credentials.id_token,
-        google_requests.Request(),
-        GOOGLE_CLIENT_ID
-    )
-    
-    user = User(id_info["sub"], id_info["email"])
-    login_user(user)
-    session["email"] = id_info["email"]
-    return redirect(url_for("home"))
-
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    session.clear()
-    return redirect(url_for("user_form"))
 
 # Function to get chatbot response from OpenAI
 def get_response(user_input):
@@ -178,7 +118,6 @@ def save_chat_to_redis(name, phone, email, chat_history):
         return False
 
 @app.route("/", methods=["GET", "POST"])
-@login_required 
 def home():
     if not session.get("user_details"):
         return redirect(url_for("user_form"))
@@ -409,4 +348,3 @@ def download_chat():
 
 if __name__ == "__main__":
     app.run(debug=True)   
-app = app
