@@ -445,7 +445,13 @@
             <button id="send-button">Send</button>
         </div>
     </div>
-
+    <!-- Logout Button (shown after login) -->
+    <div class="user-controls">
+      <span>Logged in as: {{ session.email }}</span>
+      <a href="{{ url_for('logout') }}" class="logout-btn">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </a>
+    </div>
     <script>
         // Wait for DOM to be fully loaded
         document.addEventListener('DOMContentLoaded', function() {
