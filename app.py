@@ -15,6 +15,27 @@ from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport import requests as google_requests
 
+
+
+
+load_dotenv()
+
+class CustomOpenAIClient(OpenAI):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('proxies', None)  
+        super().__init__(*args, **kwargs)
+client = CustomOpenAIClient(
+    api_key=os.getenv("OPENAI_API_KEY")
+)
+
+# Flask setup
+app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY")
+#app.config['SESSION_TYPE'] = 'filesystem'
+#Session(app)
+UPSTASH_REDIS_URL = os.getenv("https://square-bobcat-19563.upstash.io") 
+UPSTASH_TOKEN = os.getenv("AUxrAAIjcDEyNGUwMzU5NzhmY2M0MDQyYTA2ZTljOGZlZTM1YTQwY3AxMA")
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -73,25 +94,6 @@ def logout():
     logout_user()
     session.clear()
     return redirect(url_for("user_form"))
-
-
-load_dotenv()
-
-class CustomOpenAIClient(OpenAI):
-    def __init__(self, *args, **kwargs):
-        kwargs.pop('proxies', None)  
-        super().__init__(*args, **kwargs)
-client = CustomOpenAIClient(
-    api_key=os.getenv("OPENAI_API_KEY")
-)
-
-# Flask setup
-app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY")
-#app.config['SESSION_TYPE'] = 'filesystem'
-#Session(app)
-UPSTASH_REDIS_URL = os.getenv("https://square-bobcat-19563.upstash.io") 
-UPSTASH_TOKEN = os.getenv("AUxrAAIjcDEyNGUwMzU5NzhmY2M0MDQyYTA2ZTljOGZlZTM1YTQwY3AxMA")
 
 # Function to get chatbot response from OpenAI
 def get_response(user_input):
