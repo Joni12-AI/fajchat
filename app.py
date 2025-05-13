@@ -58,7 +58,7 @@ flow = Flow.from_client_config(
             "token_uri": "https://accounts.google.com/o/oauth2/token",
             "redirect_uris": [
                 "http://localhost:5000/login/callback",  # Local
-                "https://your-vercel-app.vercel.app/login/callback"  # Production
+                "http://fajchat.vercel.app/auth/callback"  # Production
             ]
         }
     },
