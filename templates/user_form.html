@@ -106,7 +106,6 @@
             <button type="submit">Submit</button>
         </form>
     </div>
-  
 
     <script>
         document.getElementById('registrationForm').addEventListener('submit', function(e) {
@@ -132,15 +131,48 @@
             
             // Validate phone number (simple validation)
             const phone = document.getElementById('phone');
-            if (!phone.value.trim() || phone.value.length < 8) {
-                document.getElementById('phone_error').style.display = 'block';
+            const phoneError = document.getElementById('phone_error');
+            const phoneValue = phone.value.trim();
+
+            // Reset error state
+            phoneError.style.display = 'none';
+
+            // Basic validation (not empty + minimum length)
+            if (!phoneValue || phoneValue.length < 8) {
+                phoneError.textContent = "Phone number is required and must be at least 8 digits.";
+                phoneError.style.display = 'block';
                 valid = false;
-            } else {
-                document.getElementById('phone_error').style.display = 'none';
             }
-            
+            // Format validation: Must match +971-XX-1234567
+            else if (!/^\+971-\d{2}-\d{7}$/.test(phoneValue)) {
+                phoneError.textContent = "Phone number must be in the format: 971XX1234567";
+                phoneError.style.display = 'block';
+                valid = false;
+            }
+
+            // Auto-format input (optional)
+            phone.addEventListener('input', function() {
+                // Remove all non-digits and leading '+' to clean the input
+                let cleaned = phone.value.replace(/\D/g, '').replace(/^0+/, '');
+                
+                // Add '+971-' if the user starts typing with '971' (without '+')
+                if (cleaned.startsWith('971') && cleaned.length > 3) {
+                    cleaned = '+' + cleaned.substring(0, 3) + '-' + cleaned.substring(3);
+                }
+                
+                // Auto-insert dashes (e.g., +971-50-1234567)
+                if (cleaned.length > 7 && cleaned.includes('-')) {
+                    const parts = cleaned.split('-');
+                    if (parts.length === 2 && parts[1].length >= 2) {
+                        cleaned = `${parts[0]}-${parts[1].substring(0, 2)}-${parts[1].substring(2)}`;
+                    }
+                }
+                
+                phone.value = cleaned;
+            });
+
             if (!valid) {
-                e.preventDefault();
+                e.preventDefault(); // Stop form submission if invalid
             }
         });
     </script>
