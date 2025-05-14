@@ -441,20 +441,29 @@
             {% endfor %}
         </div>
         <div class="chat-input">
-            <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off">
+            <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
             <button id="send-button">Send</button>
         </div>
     </div>
 
     <script>
         // Wait for DOM to be fully loaded
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
+            // Disable input initially
+            const input = document.getElementById('message-input');
+            const sendButton = document.getElementById('send-button');
+            if (input && sendButton) {
+                input.disabled = true;
+                input.placeholder = "You can't write...";
+                sendButton.disabled = true;
+            }
+
             // Menu functions
             function toggleMenu() {
                 const menu = document.getElementById('actionMenu');
                 if (menu) {
                     menu.classList.toggle('show');
-                    
+
                     if (menu.classList.contains('show')) {
                         document.addEventListener('click', closeMenuOutside);
                     }
@@ -472,7 +481,7 @@
             function resetChat() {
                 const menu = document.getElementById('actionMenu');
                 if (menu) menu.classList.remove('show');
-                
+
                 if (confirm('Are you sure you want to reset the chat?')) {
                     fetch('/reset', {
                         method: 'POST',
@@ -480,13 +489,13 @@
                             'Content-Type': 'application/json',
                         }
                     })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            window.location.reload();
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.location.reload();
+                            }
+                        })
+                        .catch(error => console.error('Error:', error));
                 }
             }
 
@@ -496,14 +505,23 @@
                 window.location.href = '/download_chat';
             }
 
+            // Enable input function
+            function enableInput() {
+                if (input && sendButton) {
+                    input.disabled = false;
+                    sendButton.disabled = false;
+                    input.placeholder = "Type your message...";
+                    input.focus();
+                }
+            }
+
             // Message sending functionality
             function sendMessage() {
-                const input = document.getElementById('message-input');
                 if (!input) return;
-                
+
                 const message = input.value.trim();
                 if (!message) return;
-                
+
                 appendMessage('You', message);
                 input.value = '';
 
@@ -514,65 +532,73 @@
                     },
                     body: `message=${encodeURIComponent(message)}`
                 })
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const messages = doc.querySelectorAll('.message, .date-header');
-                    const chatMessages = document.getElementById('chat-messages');
-                    
-                    if (chatMessages) {
-                        chatMessages.innerHTML = '';
-                        messages.forEach(msg => chatMessages.appendChild(msg.cloneNode(true)));
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
-                })
-                .catch(error => console.error('Error:', error));
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const messages = doc.querySelectorAll('.message, .date-header');
+                        const chatMessages = document.getElementById('chat-messages');
+
+                        if (chatMessages) {
+                            chatMessages.innerHTML = '';
+                            messages.forEach(msg => {
+                                const cloned = msg.cloneNode(true);
+                                chatMessages.appendChild(cloned);
+
+                                // 🔍 Check if message contains final prompt
+                                if (
+                                    cloned.classList.contains('bot-message') &&
+                                    cloned.textContent.trim().toLowerCase().includes("how can we help further")
+                                ) {
+                                    enableInput(); // ✅ Enable input only when final prompt appears
+                                }
+                            });
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
             }
 
             function appendMessage(sender, message) {
                 const chatMessages = document.getElementById('chat-messages');
                 if (!chatMessages) return;
-                
+
                 const now = new Date();
                 const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${sender === 'You' ? 'user-message' : 'bot-message'}`;
                 messageDiv.innerHTML = `${message}<div class="timestamp" style="font-size: 0.7em; text-align: right; margin-top: 5px;">${timeString}</div>`;
-                
+
                 chatMessages.appendChild(messageDiv);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
 
             function sendCategory(category) {
-                const input = document.getElementById('message-input');
                 if (input) {
                     input.value = category;
                     sendMessage();
                 }
             }
 
-            // Set up event listeners
-            const sendButton = document.getElementById('send-button');
-            const messageInput = document.getElementById('message-input');
-            
+            // Event listeners
             if (sendButton) {
                 sendButton.addEventListener('click', sendMessage);
             }
-            
-            if (messageInput) {
-                messageInput.addEventListener('keypress', function(e) {
+
+            if (input) {
+                input.addEventListener('keypress', function (e) {
                     if (e.key === 'Enter') sendMessage();
                 });
             }
 
-            // Expose functions to global scope for HTML onclick attributes
+            // Expose functions globally
             window.toggleMenu = toggleMenu;
             window.resetChat = resetChat;
             window.downloadChat = downloadChat;
             window.sendCategory = sendCategory;
         });
     </script>
+
 </body>
 </html>
