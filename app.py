@@ -59,12 +59,6 @@ CATEGORIES = {
 #REGISTRATIONS_FILE = "registrations.csv"
 #CHAT_HISTORY_FILE = "chat_history.csv"
 
-redis_client = redis.Redis(
-    host=UPSTASH_REDIS_URL,
-    port=19563,  # Your port number from Upstash dashboard
-    password=UPSTASH_TOKEN,
-    ssl=True  # Required for Upstash
-)
 
 
 def save_registration(name, phone, email):
