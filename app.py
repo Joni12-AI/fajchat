@@ -10,7 +10,10 @@ from fpdf import FPDF
 from dotenv import load_dotenv
 import requests 
 import json
-
+import redis
+from flask import current_app
+from io import BytesIO
+import re 
 load_dotenv()
 
 class CustomOpenAIClient(OpenAI):
@@ -26,10 +29,8 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 #app.config['SESSION_TYPE'] = 'filesystem'
 #Session(app)
-UPSTASH_REDIS_URL = os.getenv("https://square-bobcat-19563.upstash.io") 
-UPSTASH_TOKEN = os.getenv("AUxrAAIjcDEyNGUwMzU5NzhmY2M0MDQyYTA2ZTljOGZlZTM1YTQwY3AxMA")
-
-
+UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_REST_URL") 
+UPSTASH_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN")
 
 # Function to get chatbot response from OpenAI
 def get_response(user_input):
@@ -59,10 +60,16 @@ CATEGORIES = {
 #REGISTRATIONS_FILE = "registrations.csv"
 #CHAT_HISTORY_FILE = "chat_history.csv"
 
+redis_client = redis.Redis(
+    host=UPSTASH_REDIS_URL,
+    port=19563,  # Your port number from Upstash dashboard
+    password=UPSTASH_TOKEN,
+    ssl=True  # Required for Upstash
+)
 
 
 def save_registration(name, phone, email):
-    """Save registration data to Redis"""
+    """Save registration data to Redis using Upstash REST API"""
     try:
         redis_key = f"user:{phone}:info"
         user_data = {
@@ -72,14 +79,16 @@ def save_registration(name, phone, email):
             "timestamp": datetime.now().isoformat()
         }
         
+        # Use SET command via Upstash REST API
         response = requests.post(
-            f"{UPSTASH_REDIS_URL}/set/{redis_key}",
+            f"{os.getenv('UPSTASH_REDIS_REST_URL')}/set/{redis_key}",
             headers={
-                "Authorization": f"Bearer {UPSTASH_TOKEN}",
+                "Authorization": f"Bearer {os.getenv('UPSTASH_REDIS_REST_TOKEN')}",
                 "Content-Type": "application/json"
             },
             data=json.dumps(user_data)
         )
+        
         response.raise_for_status()
         return True
     except Exception as e:
@@ -87,12 +96,9 @@ def save_registration(name, phone, email):
         return False
 # savings chats in csv file
 def save_chat_to_redis(name, phone, email, chat_history):
-    """Save chat history to Upstash Redis using REST API"""
+    """Save chat history to Redis using Upstash REST API"""
     try:
-        # Generate a unique key for this user's chat (e.g., "chat:{phone}:history")
         redis_key = f"chat:{phone}:history"
-        
-        # Convert chat history to JSON
         chat_data = {
             "name": name,
             "phone": phone,
@@ -101,22 +107,22 @@ def save_chat_to_redis(name, phone, email, chat_history):
             "last_updated": datetime.now().isoformat()
         }
         
-        # Send data to Upstash Redis (SET command via REST)
+        # Use SET command via Upstash REST API
         response = requests.post(
-            f"{UPSTASH_REDIS_URL}/set/{redis_key}",
+            f"{os.getenv('UPSTASH_REDIS_REST_URL')}/set/{redis_key}",
             headers={
-                "Authorization": f"Bearer {UPSTASH_TOKEN}",
+                "Authorization": f"Bearer {os.getenv('UPSTASH_REDIS_REST_TOKEN')}",
                 "Content-Type": "application/json"
             },
             data=json.dumps(chat_data)
         )
         
-        response.raise_for_status()  # Raise error if request fails
+        response.raise_for_status()
         return True
     except Exception as e:
         print(f"Redis save error: {e}")
         return False
-
+    
 @app.route("/", methods=["GET", "POST"])
 def home():
     if not session.get("user_details"):
@@ -269,39 +275,62 @@ def reset():
 
 
 def generate_chat_pdf(chat_history, user_info):
+    """Enhanced PDF generation with better formatting"""
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    
+    # Set document properties
+    pdf.set_title(f"FAJ Chat History - {user_info['name']}")
+    pdf.set_author("FAJ Technical Services")
     
     # Add header
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt="FAJ Technical Services - Chat History", ln=1, align='C')
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt=f"User: {user_info['name']}", ln=1)
-    pdf.cell(200, 10, txt=f"Phone: {user_info['phone']}", ln=1)
-    pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=1)
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, 'FAJ Technical Services - Chat History', 0, 1, 'C')
+    pdf.ln(5)
+    
+    # User information
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(0, 8, f"Customer: {user_info['name']}", 0, 1)
+    pdf.cell(0, 8, f"Phone: {user_info['phone']}", 0, 1)
+    if user_info.get('email'):
+        pdf.cell(0, 8, f"Email: {user_info['email']}", 0, 1)
+    pdf.cell(0, 8, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}", 0, 1)
     pdf.ln(10)
     
-    # Add chat messages
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, txt="Chat Transcript:", ln=1)
-    pdf.set_font("Arial", size=10)
+    # Chat transcript header
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, 'Chat Transcript:', 0, 1)
+    pdf.ln(5)
     
-    for sender, message, timestamp in chat_history:
-        # Clean HTML tags from message
-        clean_msg = ' '.join(message.replace('<br>', '\n').split())
-        if '<' in clean_msg and '>' in clean_msg:
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(clean_msg, 'html.parser')
-            clean_msg = soup.get_text(separator='\n')
+    # Process chat messages
+    pdf.set_font('Arial', '', 10)
+    
+    for entry in chat_history:
+        if len(entry) < 3:  # Skip malformed entries
+            continue
+            
+        sender, content, timestamp = entry[:3]
         
-        pdf.set_fill_color(200, 220, 255) if sender == "Bot" else pdf.set_fill_color(255, 255, 255)
-        pdf.multi_cell(0, 8, txt=f"{sender} ({timestamp}):\n{clean_msg}", border=1, fill=True)
-        pdf.ln(2)
+        # Skip header entries
+        if sender == "HEADER":
+            continue
+            
+        # Clean HTML content
+        clean_content = re.sub(r'<[^>]+>', '', str(content))
+        clean_content = clean_content.replace('\n', ' ').strip()
+        
+        # Format message
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(0, 6, f"{sender} ({timestamp}):", 0, 1)
+        pdf.set_font('Arial', '', 10)
+        
+        # Handle multi-line content
+        pdf.multi_cell(0, 6, clean_content)
+        pdf.ln(3)
     
-    # Save to memory buffer
+    # Save to buffer
     pdf_buffer = BytesIO()
-    pdf.output(pdf_buffer,  dest='F')
+    pdf.output(pdf_buffer)
     pdf_buffer.seek(0)
     return pdf_buffer
 @app.route('/download_chat')
@@ -309,42 +338,72 @@ def download_chat():
     if not session.get('user_details'):
         return redirect(url_for('user_form'))
     
-    user = session['user_details']
-    phone = user['phone']
-    
     try:
+        user = session['user_details']
+        phone = user['phone']
+        
+        # Validate phone number format
+        if not phone or not isinstance(phone, str):
+            raise ValueError("Invalid phone number format")
+        
+        # URL encode the phone number for Redis key
+        encoded_phone = requests.utils.quote(phone)
+        
         # Fetch chat history from Redis
         response = requests.get(
-            f"{UPSTASH_REDIS_URL}/get/chat:{phone}:history",
-            headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"}
+            f"{UPSTASH_REDIS_URL}/get/chat:{encoded_phone}:history",
+            headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"},
+            timeout=10  # Add timeout
         )
+        
+        # Handle response status
+        if response.status_code == 404:
+            return "No chat history found for this user", 404
         response.raise_for_status()
         
-        chat_data = response.json().get("result")
-        if not chat_data:
-            return "No chat history found", 404
+        # Parse response
+        redis_data = response.json()
+        if not redis_data.get('result'):
+            return "No chat history available", 404
             
-        chat_history = json.loads(chat_data)["history"]
+        try:
+            chat_data = json.loads(redis_data['result'])
+            chat_history = chat_data.get('history', [])
+            
+            if not chat_history:
+                return "Empty chat history", 404
+        except (json.JSONDecodeError, KeyError) as e:
+            current_app.logger.error(f"Error parsing chat data: {str(e)}")
+            return "Invalid chat data format", 500
         
-        # Generate PDF
+        # Generate PDF with improved formatting
         user_info = {
-            "name": f"{user['first_name']} {user['last_name']}",
+            "name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip(),
             "phone": phone,
             "email": user.get('email', '')
         }
+        
         pdf_buffer = generate_chat_pdf(chat_history, user_info)
+        
+        # Create filename with sanitized user name
+        safe_name = "".join(c if c.isalnum() else "_" for c in user_info['name'])
+        filename = f"FAJ_Chat_{safe_name}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
         
         return send_file(
             pdf_buffer,
             as_attachment=True,
-            download_name=f"FAJ_Chat_{user_info['name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            download_name=filename,
             mimetype='application/pdf'
         )
+        
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"Redis connection error: {str(e)}")
+        return "Failed to connect to chat storage", 503
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"Redis fetch error: {e}")
+        current_app.logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         return "Failed to generate chat history", 500
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)   
