@@ -398,6 +398,9 @@
             from { opacity: 0; transform: translateY(-5px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        
+
     </style>
 </head>
 <body>
@@ -444,6 +447,7 @@
             <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" disabled>
             <button id="send-button">Send</button>
         </div>
+        
     </div>
 
     <script>
@@ -499,10 +503,32 @@
                 }
             }
 
-            function downloadChat() {
-                const menu = document.getElementById('actionMenu');
-                if (menu) menu.classList.remove('show');
-                window.location.href = '/download_chat';
+           async function downloadChat() {
+                try {
+                    const response = await fetch('/download_chat', {
+                        method: 'GET',  // Match your Flask route
+                        credentials: 'same-origin'  // Include session cookies
+                    });
+                    
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = response.headers.get('Content-Disposition') 
+                                    ? response.headers.get('Content-Disposition').split('filename=')[1]
+                                    : 'chat_history.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        a.remove();
+                    } else {
+                        alert('Failed to download chat history');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error downloading chat');
+                }
             }
 
             // Enable input function
@@ -598,6 +624,32 @@
             window.downloadChat = downloadChat;
             window.sendCategory = sendCategory;
         });
+        let inactivityTime = function () {
+        let timer;
+        let popupShown = false;
+
+        function showPopup() {
+            if (!popupShown) {
+                alert("Welcome to FAJ Technical Services!! How can we help?");
+                popupShown = true;
+            }
+        }
+
+        function resetTimer() {
+            clearTimeout(timer);
+            popupShown = false;
+            timer = setTimeout(showPopup, 90 * 1000); // 1.5 minutes = 90 seconds
+        }
+
+        window.onload = resetTimer;
+        document.onmousemove = resetTimer;
+        document.onkeypress = resetTimer;
+        document.onscroll = resetTimer;
+        document.onclick = resetTimer;
+    };
+
+    inactivityTime();
+        
     </script>
 
 </body>
