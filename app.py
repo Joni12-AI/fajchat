@@ -322,10 +322,15 @@ def generate_chat_pdf(chat_history, user_info):
         pdf.multi_cell(0, 6, clean_content)
         pdf.ln(3)
     
-    # Generate PDF in memory
-    pdf_bytes = pdf.output(dest='S')
-    pdf_buffer = BytesIO(pdf_bytes)                    
-    return pdf_buffer
+     # Generate PDF in memory
+    pdf_output_str = pdf.output(dest='S')  
+    pdf_buffer = BytesIO(pdf_output_str.encode('latin-1'))  
+    return send_file(
+    pdf_buffer,
+    mimetype='application/pdf',
+    download_name='chat_history.pdf',
+    as_attachment=True
+)
 @app.route('/download_chat')
 def download_chat():
     if not session.get('user_details'):
