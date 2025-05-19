@@ -306,32 +306,25 @@ def generate_chat_pdf(chat_history, user_info):
     pdf.set_font('Arial', '', 10)
     
     for entry in chat_history:
-        if len(entry) < 3:  # Skip malformed entries
+        if len(entry) < 3:
             continue
             
         sender, content, timestamp = entry[:3]
-        
-        # Skip header entries
         if sender == "HEADER":
             continue
             
-        # Clean HTML content
         clean_content = re.sub(r'<[^>]+>', '', str(content))
         clean_content = clean_content.replace('\n', ' ').strip()
         
-        # Format message
         pdf.set_font('Arial', 'B', 10)
         pdf.cell(0, 6, f"{sender} ({timestamp}):", 0, 1)
         pdf.set_font('Arial', '', 10)
-        
-        # Handle multi-line content
         pdf.multi_cell(0, 6, clean_content)
         pdf.ln(3)
     
-    # Save to buffer
-    pdf_buffer = BytesIO()
-    pdf.output(pdf_buffer)
-    pdf_buffer.seek(0)
+    # Generate PDF in memory
+    pdf_bytes = pdf.output(dest='S')
+    pdf_buffer = BytesIO(pdf_bytes)                    
     return pdf_buffer
 @app.route('/download_chat')
 def download_chat():
