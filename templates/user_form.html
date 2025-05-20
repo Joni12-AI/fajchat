@@ -166,6 +166,23 @@
                 errorMsg.style.display = 'block';
                 valid = false;
             }
+            const emailInput = document.getElementById('email');
+            const emailError = document.getElementById('email_error');
+
+            // Basic email regex for format validation (allows any domain)
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!emailInput.value.trim()) {
+                emailError.textContent = "Email is required.";
+                emailError.style.display = 'block';
+                valid = false;
+            } else if (!emailRegex.test(emailInput.value)) {
+                emailError.textContent = "Please enter a valid email address.";
+                emailError.style.display = 'block';
+                valid = false;
+            } else {
+                emailError.style.display = 'none';
+            }
 
             // If any field is invalid, prevent submission
             if (!valid) {
