@@ -14,6 +14,8 @@ import redis
 from flask import current_app
 from io import BytesIO
 import re 
+from zoneinfo import ZoneInfo 
+from pytz import timezone 
 load_dotenv()
 
 class CustomOpenAIClient(OpenAI):
@@ -55,10 +57,9 @@ CATEGORIES = {
     "Other": ["General Information"]
 }
 
-# Save chat to CSV (Updated to include email)
-# File paths
-#REGISTRATIONS_FILE = "registrations.csv"
-#CHAT_HISTORY_FILE = "chat_history.csv"
+# set timezone to dubai 
+dubai_time = datetime.now(ZoneInfo("Asia/Dubai"))
+
 
 redis_client = redis.Redis(
     host=UPSTASH_REDIS_URL,
@@ -76,7 +77,7 @@ def save_registration(name, phone, email):
             "name": name,
             "phone": phone,
             "email": email,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(ZoneInfo("Asia/Dubai")).isoformat()
         }
         
         # Use SET command via Upstash REST API
@@ -104,7 +105,7 @@ def save_chat_to_redis(name, phone, email, chat_history):
             "phone": phone,
             "email": email,
             "history": chat_history,
-            "last_updated": datetime.now().isoformat()
+            "last_updated": datetime.now(ZoneInfo("Asia/Dubai")).isoformat()
         }
         
         # Use SET command via Upstash REST API
@@ -135,7 +136,7 @@ def home():
 
     if request.method == "POST":
         message = request.form["message"]
-        time_now = datetime.now().strftime("%I:%M %p")
+        time_now = datetime.now(ZoneInfo("Asia/Dubai")).strftime("%I:%M %p")
         chat_history.append(("You", message, time_now))
 
         # Category handling
@@ -193,7 +194,7 @@ def home():
         else:
             response = get_response(message)
 
-        chat_history.append(("Bot", response, datetime.now().strftime("%I:%M %p")))
+        chat_history.append(("Bot", response, datetime.now(ZoneInfo("Asia/Dubai")).strftime("%I:%M %p")))
         session["chat_history"] = chat_history
 
         # Save with email (FIXED)
@@ -206,7 +207,7 @@ def home():
 
     # Date header handling
     fixed_chat_history = []
-    current_date = datetime.now().strftime("%A, %d %B %Y")
+    current_date = datetime.now(ZoneInfo("Asia/Dubai")).strftime("%A, %d %B %Y")
     last_date_header = session.get("last_date_header")
 
     if last_date_header != current_date:
@@ -217,7 +218,7 @@ def home():
     for item in session.get("chat_history", []):
         if len(item) == 2:
             sender, message = item
-            timestamp = datetime.now().strftime("%I:%M %p")
+            timestamp = datetime.now(ZoneInfo("Asia/Dubai")).strftime("%I:%M %p")
         else:
             sender, message, timestamp = item
         fixed_chat_history.append((sender, message, timestamp))
@@ -294,7 +295,7 @@ def generate_chat_pdf(chat_history, user_info):
     pdf.cell(0, 8, f"Phone: {user_info['phone']}", 0, 1)
     if user_info.get('email'):
         pdf.cell(0, 8, f"Email: {user_info['email']}", 0, 1)
-    pdf.cell(0, 8, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}", 0, 1)
+    pdf.cell(0, 8, f"Generated on: {datetime.now(ZoneInfo("Asia/Dubai")).strftime('%Y-%m-%d %H:%M')}", 0, 1)
     pdf.ln(10)
     
     # Chat transcript header
@@ -381,7 +382,7 @@ def download_chat():
         
         # Create filename with sanitized user name
         safe_name = "".join(c if c.isalnum() else "_" for c in user_info['name'])
-        filename = f"FAJ_Chat_{safe_name}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+        filename = f"FAJ_Chat_{safe_name}_{datetime.now(ZoneInfo("Asia/Dubai")).strftime('%Y%m%d_%H%M')}.pdf"
         
         return send_file(
             pdf_buffer,
