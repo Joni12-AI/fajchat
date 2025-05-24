@@ -14,8 +14,14 @@ import redis
 from flask import current_app
 from io import BytesIO
 import re 
-from zoneinfo import ZoneInfo 
+from zoneinfo import ZoneInfo
 from pytz import timezone 
+
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+
 load_dotenv()
 
 class CustomOpenAIClient(OpenAI):
@@ -57,8 +63,11 @@ CATEGORIES = {
     "Other": ["General Information"]
 }
 
-# set timezone to dubai 
+# setting time of Dubai 
+
+# Set Dubai time
 dubai_time = datetime.now(ZoneInfo("Asia/Dubai"))
+
 
 
 redis_client = redis.Redis(
@@ -78,6 +87,7 @@ def save_registration(name, phone, email):
             "phone": phone,
             "email": email,
             "timestamp": datetime.now(ZoneInfo("Asia/Dubai")).isoformat()
+
         }
         
         # Use SET command via Upstash REST API
@@ -238,7 +248,12 @@ def user_form():
             return "Please fill all required fields", 400
         
         full_name = f"{first_name} {last_name}"
-        save_registration(full_name, phone, email)
+        success = save_registration(full_name, phone, email)
+
+        if success:
+            subject = "Welcome to FAJ Technical Services"
+            body = f"Hello {full_name},\n\nThe details are under as: \n{full_name}\n{phone}\n{email}\nThank you for registering with FAJ Technical Services. We are here to assist you with all your technical needs."
+            send_email(subject, body, email)
 
         # Store user details with combined name
         session["user_details"] = {
@@ -268,6 +283,7 @@ def user_form():
         return redirect(url_for("home"))
 
     return render_template("user_form.html")
+
 
 @app.route("/reset", methods=["POST"])
 def reset():
@@ -324,10 +340,11 @@ def generate_chat_pdf(chat_history, user_info):
         pdf.ln(3)
     
     # Generate PDF in memory
-    pdf_output_str = pdf.output(dest='S')  # This returns a string
-    pdf_buffer = BytesIO(pdf_output_str.encode('latin-1'))  # Proper encoding to bytes
+    pdf_output_str = pdf.output(dest='B')  # This returns a string
+    pdf_buffer = BytesIO(pdf_output_str) # ✅ Encode to bytes
     pdf_buffer.seek(0)
     return pdf_buffer
+
 @app.route('/download_chat')
 def download_chat():
     if not session.get('user_details'):
@@ -398,7 +415,32 @@ def download_chat():
         current_app.logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         return "Failed to generate chat history", 500
 
+def send_email(subject, body, user_email):
+    smtp_server = os.getenv("SMTP_SERVER")  
+    smtp_port = int(os.getenv("SMTP_PORT", 465))  
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
 
+
+    company_mail = "fajtradingllc@gmail.com"
+    
+    msg = MIMEMultipart()
+    msg["From"] = smtp_user
+    msg["To"] = company_mail
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        # Use SMTP_SSL for port 465
+        server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, company_mail, msg.as_string())
+        server.quit()
+        print(f"Email sent to {company_mail}")
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
 
 if __name__ == "__main__":
     app.run(debug=True)   
