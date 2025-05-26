@@ -341,7 +341,12 @@ def generate_chat_pdf(chat_history, user_info):
     
     # Generate PDF in memory
     pdf_output_str = pdf.output(dest='S')  # This returns a string
-    pdf_buffer = BytesIO(pdf_output_str) # ✅ Encode to bytes
+    if isinstance(pdf_output_str, str):
+        pdf_bytes = pdf_output_str.encode('latin1')  # Convert str to bytes
+    else:
+        pdf_bytes = pdf_output_str  # Already bytes in newer FPDF versions
+
+    pdf_buffer = BytesIO(pdf_bytes)
     pdf_buffer.seek(0)
     return pdf_buffer
 
