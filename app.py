@@ -427,7 +427,7 @@ def send_email(subject, body, user_email):
     smtp_password = os.getenv("SMTP_PASSWORD")
 
 
-    company_mail = "fajtradingllc@gmail.com"
+    company_mail = "info@fajservices.ae"
     
     msg = MIMEMultipart()
     msg["From"] = smtp_user
