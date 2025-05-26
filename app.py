@@ -251,8 +251,8 @@ def user_form():
         success = save_registration(full_name, phone, email)
 
         if success:
-            subject = "Welcome to FAJ Technical Services"
-            body = f"Hello {full_name},\n\nThe details are under as: \n{full_name}\n{phone}\n{email}\nThank you for registering with FAJ Technical Services. We are here to assist you with all your technical needs."
+            subject = "New Chat Registration"
+            body = f"Hello!! FAJ Technical Services Team,\n\nThe details are under as: \n{full_name}\n{phone}\n{email}\nNew chat is active Please follow up."
             send_email(subject, body, email)
 
         # Store user details with combined name
