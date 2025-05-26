@@ -340,7 +340,7 @@ def generate_chat_pdf(chat_history, user_info):
         pdf.ln(3)
     
     # Generate PDF in memory
-    pdf_output_str = pdf.output(dest='B')  # This returns a string
+    pdf_output_str = pdf.output(dest='S')  # This returns a string
     pdf_buffer = BytesIO(pdf_output_str) # ✅ Encode to bytes
     pdf_buffer.seek(0)
     return pdf_buffer
