@@ -205,3 +205,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.sendCategory = sendCategory;
 });
+// Close chat on outside click
+document.addEventListener('click', function (event) {
+    if (
+        chatbotContent.style.display === 'flex' &&
+        !chatbotContent.contains(event.target) &&
+        !chatbotButton.contains(event.target) &&
+        !actionMenu.contains(event.target)
+    ) {
+        chatbotContent.style.display = 'none';
+        actionMenu.classList.remove('show');
+    }
+});
+
