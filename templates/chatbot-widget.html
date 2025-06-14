@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAJ Chatbot Widget</title>
+    <!-- Use Jinja2-safe static path -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='chatbot-widget.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/css/intlTelInput.css">
+</head>
+<body>
+    <!-- Chatbot Widget Container -->
+    <div class="chatbot-widget" id="chatbotWidget">
+        <!-- Widget Button -->
+        <div class="chatbot-button" id="chatbotButton">
+            <img src="/static/faj-icon.png" alt="Chat" class="chat-icon">
+        </div>
+        
+        <!-- Chatbot Content -->
+        <div class="chatbot-content" id="chatbotContent">
+            <!-- Chat Header -->
+<div class="chat-header">
+    <img src="https://www.fajservices.ae/assets/images/logo/FAJ-Logo.png" alt="FAJ Logo" class="header-logo">
+    <span class="header-title">FAJ Smart Assistant</span>
+    
+    <!-- Header actions container -->
+    <div class="header-actions">
+        <!-- Menu toggle button -->
+        <button class="menu-toggle" id="menuToggle">
+            <i class="fas fa-ellipsis-v"></i>
+        </button>
+        
+        <!-- Dropdown menu -->
+        <div class="dropdown-menu" id="actionMenu">
+            <button id="newChatBtn">
+                <i class="fas fa-plus"></i> New Chat
+            </button>
+            <button id="downloadChatBtn">
+                <i class="fas fa-download"></i> Download Chat
+            </button>
+            <button id="closeChat">
+                <i class="fas fa-times"></i> Close Chat
+            </button>
+        </div>
+    </div>
+</div>
+            
+            <!-- Chat Body - Changes between form and chat -->
+            <div class="chat-body" id="chatBody">
+                <!-- Registration Form (shown first) -->
+                <div class="registration-form" id="registrationForm">
+                    <h2>Registration Form</h2>
+                    <form id="userForm">
+                        <div class="input-group">
+                            <label for="first_name" class="required-field">First Name</label>
+                            <input type="text" id="first_name" name="first_name" placeholder="Enter your first name" required>
+                            <div class="error-message" id="first_name_error">Please enter your first name</div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="last_name" class="required-field">Last Name</label>
+                            <input type="text" id="last_name" name="last_name" placeholder="Enter your last name" required>
+                            <div class="error-message" id="last_name_error">Please enter your last name</div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="phone" class="required-field">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" placeholder="Enter your number" required>
+                            <div class="error-message" id="phone_error">Please enter a valid phone number</div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="email" class="required-field">Email Address</label>
+                            <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                            <div class="error-message" id="email_error">Please enter a valid email</div>
+                        </div>
+                        
+                        <button type="submit" class="submit-btn">Submit</button>
+                    </form>
+                </div>
+                
+                <!-- Chat Interface (hidden initially) -->
+                <div class="chat-interface" id="chatInterface" style="display: none;">
+                    <div class="chat-messages" id="chatMessages">
+                        {% for sender, message, timestamp in chat_history %}
+                            {% if sender == "HEADER" %}
+                                <div class="date-header">{{ message }}</div>
+                            {% elif sender == "You" %}
+                                <div class="message user-message">
+                                    {{ message | safe }}
+                                    <div class="timestamp">{{ timestamp }}</div>
+                                </div>
+                            {% else %}
+                                <div class="message bot-message">
+                                    {{ message | safe }}
+                                    <div class="timestamp">{{ timestamp }}</div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="chat-input">
+                        <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off">
+                        <button id="sendButton">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/intlTelInput.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.js"></script>
+    <script src="/static/chatbot-widget.js"></script>
+</body>
+</html>
