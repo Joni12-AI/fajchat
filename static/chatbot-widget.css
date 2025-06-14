@@ -305,7 +305,7 @@
 }
 
 /* Responsive */
-@media (max-width: 300px) {
+@media (max-width: 100%) {
     .chatbot-content {
         width: 100vw;
         height: 100vh;
@@ -508,7 +508,7 @@
         }
 
         /* Mobile Responsiveness */
-        @media (max-width: 400px) {
+        @media (max-width: 100%) {
             .menu-grid {
                 grid-template-columns: 1fr !important;
             }
