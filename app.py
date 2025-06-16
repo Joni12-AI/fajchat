@@ -379,6 +379,36 @@ def reset():
     session.clear()
     return jsonify(success=True)
 
+def remove_emojis(text):
+    # Remove emojis
+    emoji_pattern = re.compile(
+        "[" 
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags
+        u"\U00002500-\U00002BEF"  # chinese
+        u"\U00002702-\U000027B0"
+        u"\U000024C2-\U0001F251"
+        "]+", flags=re.UNICODE
+    )
+    text = emoji_pattern.sub(r'', text)
+
+    # Replace smart quotes, dashes, ellipsis etc.
+    replacements = {
+        "’": "'", "‘": "'",
+        "“": '"', "”": '"',
+        "–": "-", "—": "-", "…": "...",
+        "\u00A0": " ",  # non-breaking space
+        "\u200B": "",   # zero-width space
+        "\u2011": "-",  # non-breaking hyphen
+        "\u202F": " "   # narrow no-break space
+    }
+
+    for smart, normal in replacements.items():
+        text = text.replace(smart, normal)
+
+    return text
 
 def generate_chat_pdf(chat_history, user_info):
     """Enhanced PDF generation with better formatting"""
