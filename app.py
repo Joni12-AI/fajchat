@@ -323,7 +323,7 @@ def home():
         fixed_chat_history.append((sender, message, timestamp))
 
     session["chat_history"] = fixed_chat_history
-    return render_template("chatbot-widget.html", chat_history=fixed_chat_history)
+    return render_template("index.html", chat_history=fixed_chat_history)
 
 @app.route("/user_form", methods=["GET", "POST"])
 def user_form():
@@ -371,7 +371,7 @@ def user_form():
         session["chat_history"] = [("Bot", category_buttons)]
         return redirect(url_for("home"))
 
-    return render_template("chatbot-widget.html")
+    return render_template("user_form.html")
 
 
 @app.route("/reset", methods=["POST"])
