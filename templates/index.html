@@ -405,7 +405,7 @@
 </head>
 <body>
     <div class="chat-container">
-<!--   <div class="chat-header">
+       <div class="chat-header">
             <img src="https://www.fajservices.ae/assets/images/logo/FAJ-Logo.png" alt="FAJ Logo" class="header-logo">
             <span class="header-title">FAJ Smart Assistant</span>
             
@@ -415,7 +415,7 @@
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
                 
-                <!-- Dropdown menu (hidden by default) 
+            
                 <div class="dropdown-menu" id="actionMenu">
                     <button onclick="resetChat()">
                         <i class="fas fa-redo"></i> Reset Chat
@@ -425,7 +425,7 @@
                     </button>
                 </div>
             </div>
-        </div> -->
+        </div> 
         <div class="chat-messages" id="chat-messages">
             {% for sender, message, timestamp in chat_history %}
                 {% if sender == "HEADER" %}
