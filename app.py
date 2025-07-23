@@ -342,7 +342,7 @@ def download_chat():
             "email": user.get('email', '')
         }
 
-        pdf = FPDF(encoding='latin-1')
+        pdf = FPDF()
         pdf.add_page()
 
         # Load Unicode font
