@@ -326,7 +326,7 @@ def send_email(subject, body, user_email):
 def download_chat():
     if not session.get('user_details'):
         return redirect(url_for('user_form'))
-    
+
     try:
         user = session['user_details']
         phone = user['phone']
@@ -346,13 +346,11 @@ def download_chat():
         pdf.add_page()
 
         # Load Unicode font
-        pdf.add_font('DejaVu', '', 'DejaVuSans.ttf')
-        pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf') 
+        pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
         pdf.set_font('DejaVu', '', 16)
         pdf.cell(0, 10, 'FAJ Technical Services - Chat History', 0, 1, 'C')
         pdf.ln(5)
 
-        # Set regular font
         pdf.set_font('DejaVu', '', 12)
         pdf.cell(0, 8, f"Customer: {user_info['name']}", 0, 1)
         pdf.cell(0, 8, f"Phone: {user_info['phone']}", 0, 1)
@@ -366,7 +364,6 @@ def download_chat():
         pdf.cell(0, 10, 'Chat Transcript:', 0, 1)
         pdf.ln(5)
 
-        # Chat Entries
         pdf.set_font('DejaVu', '', 10)
         for entry in chat_history:
             if len(entry) < 3:
@@ -376,19 +373,14 @@ def download_chat():
                 continue
 
             clean_content = re.sub(r'<[^>]+>', '', str(content)).replace('\n', ' ').strip()
-
-            pdf.set_font('DejaVu', 'B', 10)
-            pdf.cell(0, 6, f"{sender} ({timestamp}):", 0, 1)
             pdf.set_font('DejaVu', '', 10)
-            pdf.multi_cell(0, 6, clean_content)
-            pdf.ln(3)
+            pdf.multi_cell(0, 6, f"{sender} ({timestamp}):\n{clean_content}")
+            pdf.ln(2)
 
-        # Create Filename
         safe_name = re.sub(r'[^a-zA-Z0-9]', '_', user_info['name'])
         filename = f"FAJ_Chat_{safe_name}_{datetime.now(ZoneInfo('Asia/Dubai')).strftime('%Y%m%d_%H%M')}.pdf"
 
-        # Output PDF
-        pdf_bytes = bytes(pdf.output(dest='S'))
+        pdf_bytes = pdf.output(dest='S').encode('latin1')
         pdf_buffer = BytesIO(pdf_bytes)
         pdf_buffer.seek(0)
 
