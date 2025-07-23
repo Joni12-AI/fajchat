@@ -380,7 +380,7 @@ def download_chat():
         safe_name = re.sub(r'[^a-zA-Z0-9]', '_', user_info['name'])
         filename = f"FAJ_Chat_{safe_name}_{datetime.now(ZoneInfo('Asia/Dubai')).strftime('%Y%m%d_%H%M')}.pdf"
 
-        pdf_bytes = pdf.output(dest='S').encode('latin1')
+        pdf_bytes = pdf.output(dest='S')
         pdf_buffer = BytesIO(pdf_bytes)
         pdf_buffer.seek(0)
 
