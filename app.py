@@ -259,13 +259,13 @@ def user_form():
 
         if not all([first_name, last_name, phone, email]):
             return "Please fill all required fields", 400
-
+        
         full_name = f"{first_name} {last_name}"
         success = save_registration(full_name, phone, email)
 
         if success:
             subject = "New Chat Registration"
-            body = f"Hello FAJ Technical Team,\n\nThe details are under as: \n{full_name}\n{phone}\n{email}\nNew chat is active. Please follow up."
+            body = f"Hello FAJ Technical Team,\n\nThe details are under as: \n{full_name}\n{phone}\n{email}\nNew chat is active Please follow up."
             send_email(subject, body, email)
 
         session["user_details"] = {
@@ -275,28 +275,24 @@ def user_form():
             "email": email
         }
 
-        # Add the "how can we help further" message to trigger input box activation
         categories = list(CATEGORIES.keys())
         category_buttons = f"""
         <div class="main-categories-container">
             <p class="main-categories-header">Welcome to FAJ Technical Services</p>
             <p class="main-categories-prompt">Please select a service category:</p>
-
+        
             <div class="main-categories-buttons">
                 {"".join(
                     f'<button class="main-categories-btn" onclick="sendCategory(\'{cat}\')">{cat}</button>'
                     for cat in categories
                 )}
             </div>
-
-            <p class="followup-prompt">How can we help further?</p>
         </div>
         """
         session["chat_history"] = [("Bot", category_buttons)]
         return redirect(url_for("home"))
 
     return render_template("user_form.html")
-
 
 @app.route("/reset", methods=["POST"])
 def reset():
