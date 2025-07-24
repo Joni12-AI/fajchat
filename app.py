@@ -15,6 +15,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
+from flask_cors import CORS
 
 load_dotenv()
 
@@ -30,6 +31,10 @@ ASSISTANT_ID = os.getenv("ASSISTANT_ID")
 # Flask setup
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
+
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
+CORS(app, supports_credentials=True)
 
 # Categories for the chat interface
 CATEGORIES = {
